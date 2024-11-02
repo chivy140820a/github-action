@@ -28,6 +28,20 @@ jobs:
         run: | 
           jq '.ConnectionStrings.DefaultConnection = "YourConnectionStringForStaging"' GitHubAction/appsettings.json > tmp.$$.json && mv tmp.$$.json GitHubAction/appsettings.json
 
+      - name: Install coverlet 
+        run: dotnet tool install --global coverlet.console
+
+      - name: Run Tests with Coverage 
+        run: | 
+          export PATH="$PATH:$HOME/.dotnet/tools" dotnet test --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:CoverletOutput=./coverage/
+
+      # Run SonarQube Scan
+      # - name: SonarQube Scan 
+      #   uses: monstar-lab-oss/sonarqube-github-action@v1.0.1 
+      #   with: 
+      #     url: ${{ secrets.SONARQUBE_HOST }} 
+      #     token: ${{ secrets.SONARQUBE_TOKEN
+
       - name: Run Tests
         run: dotnet test --configuration Release --no-build --verbosity normal
 
