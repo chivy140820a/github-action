@@ -1,0 +1,78 @@
+name: CI/CD Workflow on Ubuntu
+
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+          include-prerelease: true
+
+      - name: Check .NET Core version
+        run: dotnet --version
+
+      - name: Build code
+        run: dotnet build --configuration Release
+
+      - name: Update Configuration for Staging
+        run: |
+          jq '.ConnectionStrings.DefaultConnection = "YourConnectionStringForStaging"' GitHubAction/appsettings.json > tmp.$$.json && mv tmp.$$.json GitHubAction/appsettings.json
+
+      - name: Install coverlet
+        run: dotnet tool install --global coverlet.console
+
+      - name: Run Tests with Coverage
+        run: |
+          export PATH="$PATH:$HOME/.dotnet/tools"
+          dotnet test --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover /p:CoverletOutput=./coverage/
+
+      - name: SonarQube Scan
+        uses: sonarsource/sonarcloud-github-action@v1
+        with:
+          projectBaseDir: .
+          args: >
+            -Dsonar.projectKey=${{ secrets.SONARQUBE_PROJECT_KEY }}
+            -Dsonar.organization=${{ secrets.SONARQUBE_ORG }}
+            -Dsonar.host.url=${{ secrets.SONARQUBE_HOST }}
+            -Dsonar.login=${{ secrets.SONARQUBE_TOKEN }}
+            -Dsonar.cs.opencover.reportsPaths=coverage.opencover.xml
+
+      - name: Publish code
+        run: dotnet publish --configuration Release --output ./publish
+
+      - name: Build Docker image
+        run: docker build -t chivy14082000/demogitaction:${{ github.sha }} -f GitHubAction/Dockerfile GitHubAction/
+
+      - name: Log in to Docker Hub
+        run: echo ${{ secrets.DOCKER_HUB_PASSWORD }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
+
+      - name: Push Docker image
+        run: docker push chivy14082000/demogitaction:${{ github.sha }}
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy to EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+            docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} -p ${{ secrets.DOCKER_HUB_PASSWORD }}
+            docker pull chivy14082000/demogitaction:${{ github.sha }}
+            docker stop myapp || true
+            docker rm myapp || true
+            docker run -d --name myapp -p 80:80 chivy14082000/demogitaction:${{ github.sha }}
+          EOF
+
+      - name: Cleanup old Docker images
+        run: docker image prune -af
