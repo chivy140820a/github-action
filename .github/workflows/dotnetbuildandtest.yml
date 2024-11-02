@@ -1,0 +1,28 @@
+name: Build and Test on Push
+
+on:
+  push: # Kích hoạt trên tất cả các nhánh
+    branches:
+      - '**'
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+          include-prerelease: true
+
+      - name: Install dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release
+
+      - name: Run Tests
+        run: dotnet test --configuration Release --no-build --verbosity normal
