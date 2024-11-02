@@ -38,7 +38,7 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Build Docker image
-        run: docker build -t chivy14082000/demogitaction:${{ github.sha }} .
+        run: docker build -t chivy14082000/demogitaction:${{ github.sha }} -f GitHubAction/Dockerfile GitHubAction/
 
       - name: Log in to Docker Hub
         run: docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} -p ${{ secrets.DOCKER_HUB_PASSWORD }}
