@@ -26,7 +26,7 @@ jobs:
 
       - name: Update Configuration for Staging
         run: |
-          $json = Get-Content -Raw -Path ".GitHubAction/appsettings.json" | ConvertFrom-Json
+          $json = Get-Content -Raw -Path "GitHubAction/appsettings.json" | ConvertFrom-Json
           $json.ConnectionStrings.DefaultConnection = "YourConnectionStringForStaging"
           $json.SomeOtherField = "NewValue"
           $json | ConvertTo-Json -Depth 32 | Set-Content -Path "./appsettings.json"
