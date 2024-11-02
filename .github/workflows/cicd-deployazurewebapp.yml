@@ -24,11 +24,9 @@ jobs:
       - name: Build code
         run: dotnet build --configuration Release
 
-      - name: Update Configuration for Staging
-        run: |
-          $json = Get-Content -Raw -Path "GitHubAction/appsettings.json" | ConvertFrom-Json
-          $json.ConnectionStrings.DefaultConnection = "YourConnectionStringForStaging"
-          $json | ConvertTo-Json -Depth 32 | Set-Content -Path "GitHubAction/appsettings.json"
+      - name: Update Configuration for Staging 
+        run: | 
+          jq '.ConnectionStrings.DefaultConnection = "YourConnectionStringForStaging"' GitHubAction/appsettings.json > tmp.$$.json && mv tmp.$$.json GitHubAction/appsettings.json
 
       - name: Run Tests
         run: dotnet test --configuration Release --no-build --verbosity normal
