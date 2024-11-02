@@ -1,4 +1,4 @@
-name: CI/CD Workflow on Windows
+name: CI/CD Workflow on ubuntu
 
 on:
   push:
